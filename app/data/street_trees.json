@@ -1,0 +1,50 @@
+[
+  {
+    "species_common": "London Plane",
+    "species_scientific": "Platanus acerifolia",
+    "typical_canopy_radius_m": 8.5,
+    "leaf_area_index": 5.2,
+    "transpiration_cooling_c": 3.8,
+    "seasonal_foliage": "Dense broadleaf canopy, vibrant golden autumn transition"
+  },
+  {
+    "species_common": "Northern Red Oak",
+    "species_scientific": "Quercus rubra",
+    "typical_canopy_radius_m": 9.2,
+    "leaf_area_index": 4.8,
+    "transpiration_cooling_c": 4.2,
+    "seasonal_foliage": "Deep sheltering canopy, rich scarlet and copper fall leaves"
+  },
+  {
+    "species_common": "American Elm",
+    "species_scientific": "Ulmus americana",
+    "typical_canopy_radius_m": 10.0,
+    "leaf_area_index": 5.4,
+    "transpiration_cooling_c": 4.5,
+    "seasonal_foliage": "Vase-shaped cathedral archway providing continuous contiguous shade"
+  },
+  {
+    "species_common": "Sugar Maple",
+    "species_scientific": "Acer saccharum",
+    "typical_canopy_radius_m": 7.8,
+    "leaf_area_index": 5.0,
+    "transpiration_cooling_c": 3.6,
+    "seasonal_foliage": "Dense interlocking crown with brilliant burnt orange foliage"
+  },
+  {
+    "species_common": "Ginkgo Biloba",
+    "species_scientific": "Ginkgo biloba",
+    "typical_canopy_radius_m": 6.5,
+    "leaf_area_index": 3.6,
+    "transpiration_cooling_c": 2.5,
+    "seasonal_foliage": "Fan-shaped leaves turning radiant golden-yellow, filtered light"
+  },
+  {
+    "species_common": "Japanese Zelkova",
+    "species_scientific": "Zelkova serrata",
+    "typical_canopy_radius_m": 7.2,
+    "leaf_area_index": 4.5,
+    "transpiration_cooling_c": 3.4,
+    "seasonal_foliage": "Broom-shaped dense canopy, resilient against asphalt radiant heat"
+  }
+]

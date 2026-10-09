@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: arborstride-ai
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 2
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: DEBUG
+        value: "false"
+      - key: TABPFN_MODEL_NAME
+        value: "prior-labs/TabPFN-v2"
+      - key: TABPFN_DEVICE
+        value: "cpu"
+      - key: TABPFN_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: ELEVENLABS_VOICE_ID
+        value: "21m00Tcm4TlvDq8ikWAM"
