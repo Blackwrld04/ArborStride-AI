@@ -48,4 +48,11 @@ DATA_DIR = BASE_DIR / "app" / "data"
 PUBLIC_DIR = BASE_DIR / "public"
 AUDIO_CACHE_DIR = STATIC_DIR / "audio"
 
-AUDIO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    AUDIO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+except Exception:
+    AUDIO_CACHE_DIR = Path("/tmp/audio")
+    try:
+        AUDIO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
