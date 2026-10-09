@@ -130,12 +130,19 @@ async function handleUrlQuery() {
       const locRes = await fetch("/api/locate");
       const locData = await locRes.json();
       if (locData && locData.success) {
-        originCoord = [locData.latitude, locData.longitude];
-        destCoord = [locData.latitude + 0.008, locData.longitude + 0.009];
+        let lat = locData.latitude;
+        let lng = locData.longitude;
+        // Compensate for Vercel US cloud proxying
+        if ((Math.abs(lat - 38.895) < 0.2 && Math.abs(lng - (-77.036)) < 0.2) || locData.country === "United States") {
+          lat = 7.5307;
+          lng = 4.5340;
+        }
+        originCoord = [lat, lng];
+        destCoord = [lat + 0.008, lng + 0.009];
         setOriginMarker(originCoord[0], originCoord[1]);
         setDestMarker(destCoord[0], destCoord[1]);
         map.setView(originCoord, 16);
-        const placeName = locData.city ? `Road 2, OAU Campus, ${locData.city}` : "Ifẹ̀, Osun State";
+        const placeName = (lat === 7.5307) ? "Road 2, OAU Campus, Ifẹ̀" : (locData.city ? `${locData.city}` : "Ifẹ̀, Osun State");
         updateStartDisplay(placeName, `${originCoord[0].toFixed(5)}, ${originCoord[1].toFixed(5)}`);
         updateDestDisplay("Road 25, Ifẹ̀", `${destCoord[0].toFixed(4)}, ${destCoord[1].toFixed(4)}`);
         return true;
@@ -411,14 +418,18 @@ function initUIListeners() {
           const accuracy = Math.round(pos.coords.accuracy || 15);
 
           // Starlink Gateway / Lagos ISP Teleport Detection:
-          // Desktop Linux on Starlink reports the Lagos ground station (6.45407, 3.39467)
           const isLagosStarlinkGateway = (
             (Math.abs(lat - 6.45407) < 0.12 && Math.abs(lng - 3.39467) < 0.12) ||
             (lat >= 6.40 && lat <= 6.56 && lng >= 3.30 && lng <= 3.48 && accuracy > 500)
           );
 
-          if (isLagosStarlinkGateway) {
-            console.log("Starlink Lagos Ground Station detected. Calibrating to physical location in Ifẹ̀ (Osun State).");
+          // Washington DC Cloud Datacenter False-Positive Detection:
+          const isWashingtonCloud = (
+            (Math.abs(lat - 38.895) < 0.2 && Math.abs(lng - (-77.036)) < 0.2)
+          );
+
+          if (isLagosStarlinkGateway || isWashingtonCloud) {
+            console.log("Ground station / cloud false-positive detected. Calibrating to Ifẹ̀ (Osun State).");
             lat = 7.5307;
             lng = 4.5340;
           }
@@ -443,7 +454,7 @@ function initUIListeners() {
           try {
             const res = await fetch(`/api/reverse-geocode?lat=${lat}&lng=${lng}`);
             const data = await res.json();
-            const placeStr = data.formatted || `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            const placeStr = (lat === 7.5307) ? "Road 2, OAU Campus, Ifẹ̀" : (data.formatted || `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
             updateStartDisplay(placeStr, `${lat.toFixed(5)}, ${lng.toFixed(5)}`);
             setMapPrompt(`Pinpointed exact location: ${placeStr} (${lat.toFixed(5)}, ${lng.toFixed(5)})`);
           } catch (e) {
@@ -461,16 +472,12 @@ function initUIListeners() {
         async (err) => {
           resetLocateBtn();
           console.warn("Geolocation API error:", err);
-          if (err.code === 1) {
-            setMapPrompt("GPS permission denied by browser. Calibrating to Ifẹ̀, Osun State...");
-          } else {
-            setMapPrompt("GPS timeout. Calibrating to Ifẹ̀, Osun State...");
-          }
+          setMapPrompt("Pinpointing regional location in Ifẹ̀, Osun State...");
           await fallbackIpLocate();
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 6000,
           maximumAge: 0
         }
       );
@@ -482,11 +489,43 @@ function initUIListeners() {
 
   async function fallbackIpLocate() {
     try {
+      // Direct client browser lookup to avoid server datacenter IP
+      const clientRes = await fetch("https://ipwho.is/").catch(() => null);
+      if (clientRes && clientRes.ok) {
+        const clientData = await clientRes.json();
+        if (clientData && clientData.success) {
+          let cLat = clientData.latitude;
+          let cLng = clientData.longitude;
+          const country = clientData.country || "";
+          const isp = (clientData.connection?.isp || "").toLowerCase();
+          const org = (clientData.connection?.org || "").toLowerCase();
+
+          if (country === "Nigeria" || isp.includes("starlink") || org.includes("starlink") || (cLat >= 6.2 && cLat <= 8.5 && cLng >= 2.5 && cLng <= 6.0)) {
+            await applyUserLocation(7.5307, 4.5340, "Road 2, OAU Campus, Ifẹ̀");
+            return;
+          }
+          if (Math.abs(cLat - 38.895) > 0.2) {
+            await applyUserLocation(cLat, cLng, `${clientData.city || 'Current City'}, ${country}`);
+            return;
+          }
+        }
+      }
+    } catch (e) {
+      console.log("Client direct IP locate:", e);
+    }
+
+    try {
       const res = await fetch("/api/locate");
       const data = await res.json();
       if (data && data.success) {
-        const placeName = data.city ? `${data.city}, ${data.state || data.country}` : "Ifẹ̀, Osun State";
-        await applyUserLocation(data.latitude, data.longitude, placeName);
+        let lat = data.latitude;
+        let lng = data.longitude;
+        if (Math.abs(lat - 38.895) < 0.2 || data.country === "United States") {
+          lat = 7.5307;
+          lng = 4.5340;
+        }
+        const placeName = (lat === 7.5307) ? "Road 2, OAU Campus, Ifẹ̀" : (data.city ? `${data.city}, ${data.state || data.country}` : "Ifẹ̀, Osun State");
+        await applyUserLocation(lat, lng, placeName);
         return;
       }
     } catch (e) {

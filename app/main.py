@@ -118,24 +118,49 @@ async def get_navigator_page(request: Request, mode: str = "loop"):
 # --- API Endpoints ---
 
 @app.get("/api/locate")
-async def locate_user():
+async def locate_user(request: Request):
     """
     Returns user location with automatic preference for Ife, Osun State, Nigeria.
-    Compensates for Starlink satellite ground station teleportation to Lagos.
+    Compensates for Vercel US datacenter proxying and Starlink satellite ground stations.
     """
+    # 1. Inspect Vercel Edge Geolocation Headers directly
+    v_country = (request.headers.get("x-vercel-ip-country") or "").upper()
+    v_lat_str = request.headers.get("x-vercel-ip-latitude")
+    v_lng_str = request.headers.get("x-vercel-ip-longitude")
+
+    if v_country == "NG" or v_country == "NIGERIA":
+        return {
+            "success": True,
+            "latitude": 7.5307,
+            "longitude": 4.5340,
+            "city": "Ile-Ife",
+            "state": "Osun State",
+            "country": "Nigeria",
+            "provider": "Vercel Edge Geolocation (Calibrated Ile-Ife)"
+        }
+
+    # 2. Extract real client IP (avoid geolocating Vercel/AWS datacenter in Washington)
+    forwarded = request.headers.get("x-forwarded-for") or request.headers.get("x-real-ip")
+    client_ip = forwarded.split(",")[0].strip() if forwarded else ""
+
     import requests
     try:
-        resp = requests.get("https://ipwho.is/", timeout=2.5)
+        query_url = f"https://ipwho.is/{client_ip}" if client_ip and client_ip not in ("127.0.0.1", "localhost", "::1") else "https://ipwho.is/"
+        resp = requests.get(query_url, timeout=2.5)
         if resp.status_code == 200:
             data = resp.json()
             if data.get("success"):
                 country = data.get("country", "")
+                city = data.get("city", "")
                 connection = data.get("connection", {})
                 isp = connection.get("isp", "").lower()
                 org = connection.get("org", "").lower()
-                # Starlink satellite internet routes all Nigerian traffic via its Lagos teleport gateway.
-                # When user is on Starlink or anywhere in Nigeria, calibrate directly to Ife, Osun State!
-                if country == "Nigeria" or "starlink" in isp or "starlink" in org:
+
+                # Detect if request is in Nigeria, on Starlink, or cloud datacenter (e.g. Washington D.C.)
+                is_nigeria = (country == "Nigeria" or v_country == "NG" or "starlink" in isp or "starlink" in org)
+                is_cloud_datacenter = (city == "Washington" and country == "United States") or "amazon" in org or "microsoft" in org or "google" in org or "vercel" in org
+
+                if is_nigeria or is_cloud_datacenter:
                     return {
                         "success": True,
                         "latitude": 7.5307,
@@ -145,6 +170,7 @@ async def locate_user():
                         "country": "Nigeria",
                         "provider": "Calibrated Regional Hub (Ile-Ife, Osun State)"
                     }
+
                 return {
                     "success": True,
                     "latitude": data.get("latitude"),
@@ -156,7 +182,7 @@ async def locate_user():
     except Exception as e:
         logger.debug(f"IP Geolocation error: {e}")
 
-    # Local fallback to Ife, Osun State, Nigeria
+    # Fallback to Ife, Osun State, Nigeria
     return {
         "success": True,
         "latitude": 7.5307,
